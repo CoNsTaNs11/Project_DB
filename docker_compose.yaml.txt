@@ -1,0 +1,40 @@
+version: "3.8"
+services:
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: pguser
+      POSTGRES_PASSWORD: 23042004
+      POSTGRES_DB: construction
+    ports:
+      - "5432:5411"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pguser -d construction"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  fastapi:
+    image: python:3.11-slim
+    container_name: fastapi-app
+    working_dir: /app
+    volumes:
+      - ./construction_api/app:/app
+    command: >
+      sh -c "pip install fastapi uvicorn sqlalchemy pg8000 psycopg2-binary alembic && 
+             sleep 5 &&  # Ожидание готовности postgres
+             uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+    environment:
+      DATABASE_URL: postgresql+pg8000://pguser:newpassword123@postgres:5432/construction
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
